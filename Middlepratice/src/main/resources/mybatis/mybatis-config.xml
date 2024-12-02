@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<!-- 본인이 설정할 db파일을 불러옴 -->
+    <properties resource="mybatis/dbinfo.properties"/>
+
+    <environments default="oracleDB"> <!-- 환경설정 -> DB종류 ex)mysql 혹은 oracleDB -->
+        <environment id="oracleDB">
+            <transactionManager type="JDBC"/> <!-- JDBC를 이용  -->
+            <dataSource type="POOLED">
+            	<!-- dbinfo.properties 파일에서 선언한 driver 
+            			url,username,password를 읽어온다. -->
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${user}"/>
+                <property name="password" value="${pass}"/>
+                
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+    	<!-- Mapper파일을 불러오고, 보통 db관련 작업->insert,delete,update,select등을 쓸 때 사용
+    		테이블 하나당 하나씩 Mapper파일을 생성해서 작업해 주는것이 좋다. -->
+        <mapper resource="mappers/UserMapper.xml"/>
+    </mappers>
+</configuration>
