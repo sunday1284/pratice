@@ -4,7 +4,7 @@ export interface User {
   email: string;
   createAt: string;
 }
-//요청 타입: id createdAt 빼고
+//요청 타입: id createdAt 빼고 -> Omit 특정 속성만 제거한 타입 정의
 export type CreateUserReq = Omit<User, 'id' | 'createAt'>;
 // 응답 타입
 export type UserRes = User;
