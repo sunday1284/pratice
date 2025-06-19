@@ -93,6 +93,7 @@ export default defineConfig((ctx) => {
       ]
     },
 
+
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       // https: true,
@@ -101,10 +102,9 @@ export default defineConfig((ctx) => {
         // 프론트에서 `/api/...` 로 요청하면
         // 실제로는 http://localhost:8080/api/... 로 전달됩니다
         '/api': {
-          target: 'http://localhost:8080',
+          target: 'http://127.0.0.1:3000',
           changeOrigin: true,
-          secure: false,   // HTTPS가 아니라면 false
-          ws: false
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
@@ -112,7 +112,7 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
       config: {},
-
+      importStrategy: 'auto',
       // iconSet: 'material-icons', // Quasar icon set
       // lang: 'en-US', // Quasar language pack
 
@@ -120,7 +120,11 @@ export default defineConfig((ctx) => {
       // (like functional components as one of the examples),
       // you can manually specify Quasar components/directives to be available everywhere:
       //
-      // components: [],
+      /*components: [
+        'QBtn',
+        'QPage',
+        'QTable'
+      ],*/
       // directives: [],
 
       // Quasar plugins

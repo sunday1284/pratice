@@ -15,11 +15,4 @@ export interface GetUsersReq {
   limit?: number;
   search?: string;
 }
-
-//리스트 조회 응답
-export interface GetUsersRes{
-  users: UserRes[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export type GetUsersRes = User[]

@@ -49,8 +49,12 @@ export class Http {
     url: string,
     config: RequestConfig<D> = {}
   ): Promise<HttpResponse<T>> {
-    // 1) URL 조합: baseURL + url + 쿼리 파라미터
-    const fullUrl = new URL(url, this.baseURL)
+    // 1) baseURL 이 빈 문자열일 수도 있으니, window.location.origin 을 기본으로 삼습니다
+    const origin = this.baseURL || window.location.origin
+
+    // 2) URL 인스턴스를 무조건 만듭니다
+    const fullUrl = new URL(url, origin)
+
 
     // params 가 있다면 URL에 key=value 형식으로 붙여준다
     if (config.params) {
@@ -145,5 +149,5 @@ export class Http {
  * 기본값으로 'http://localhost:8080' 을 사용합니다.
  */
 export const httpClient = new Http(
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  import.meta.env.VITE_API_BASE_URL || window.location.origin
 )
