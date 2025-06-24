@@ -1,14 +1,21 @@
 <template>
   <q-page padding>
+    <div class="q-mb-md row items-center justify-between">
+      <q-btn color="primary" label="사용자 추가" @click="dialog = true"/>
+      <q-btn color="secondary" label="Load Users" @click="userStore.fetchUsers()" />
 
-   <div class="q-mb-md">
-     <q-btn
-      label="Load Users"
-      color="primary"
-      @click="() => void userStore.fetchUsers()"
-      :loading="userStore.loading"
-     />
-   </div>
+    </div>
+
+
+
+<!--   <div class="q-mb-md">-->
+<!--     <q-btn-->
+<!--      label="Load Users"-->
+<!--      color="primary"-->
+<!--      @click="() => void userStore.fetchUsers()"-->
+<!--      :loading="userStore.loading"-->
+<!--     />-->
+<!--   </div>-->
   <!-- 에러가 있으면 빨간 텍스트로    -->
   <div v-if="userStore.error" class="text-negative q-mb-md">
     {{userStore.error}}
@@ -23,11 +30,28 @@
       bordered
       no-data-label="데이터가 없습니다."
     />
+    <q-dialog v-model="dialog">
+      <q-card style="min-width: 350px" >
+        <q-card-section>
+          <div class="text-h6">사용자 추가 </div>
+        </q-card-section>
+
+        <q-card-section>
+          <q-input v-model="form.name" label="이름"/>
+          <q-input  v-model="form.email" label="이메일" class="q-mt-sm"/>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="취소" color="primary" v-close-popup/>
+          <q-btn flat label="추가" color="primary" @click="handleCreateUser"/>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import {useUserStore, type User} from 'stores/user';
 import type { QTableColumn } from 'quasar'
 // import type { GetUsersRes, CreateUserReq } from 'src/api/user.type'
@@ -35,7 +59,8 @@ import type { QTableColumn } from 'quasar'
 // type User = GetUsersRes[number]
 //1) store 인스턴스 생성할 때
 const userStore = useUserStore()
-
+const dialog =  ref(false);
+const form = ref({name: '', email: ''});
 //userStore -> pinia 사용 x 일 때 코드
 // 2) 반응형 users 배열 (초기값은 빈 배열)
 // const users = ref<User[]>([])
@@ -46,6 +71,19 @@ const columns: QTableColumn<User>[] = [
   { name: 'name',  label: 'Name',  field: 'name',  align: 'left', required: true },
   { name: 'email', label: 'Email', field: 'email', align: 'left', required: true }
 ]
+
+async function handleCreateUser() {
+  if (!form.value.name ||!form.value.email) return;
+
+  await userStore.createUser({
+    name: form.value.name,
+    email: form.value.email,
+  });
+
+  dialog.value = false;
+  form.value = {name: '', email: ''};
+}
+
 //3) onMounted 시 한 번 로드
 onMounted(async () => {
    await userStore.fetchUsers()
