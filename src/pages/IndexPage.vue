@@ -1,118 +1,187 @@
 <template>
   <q-page padding>
-    <div class="q-mb-md row items-center justify-between">
-      <q-btn color="primary" label="사용자 추가" @click="dialog = true"/>
-      <q-btn color="secondary" label="Load Users" @click="userStore.fetchUsers()" />
-
+    <div class="q-mb-md row items-center justify-between q-gutter-md">
+      <div>
+      <q-btn color="primary" label="사용자 추가" @click="openCreateDialog" />
+      <q-btn
+        v-if="selected.length > 0"
+        color = "negative"
+        :label="`${selected.length}명 선택 삭제`"
+        @click="confirmBulkDelete"
+        class="q-ml-sm"
+      />
+      </div>
+      <q-btn
+        color="secondary"
+        label="Load Users"
+        @click="userStore.fetchUsers()"
+        :loading="userStore.loading"
+      />
     </div>
 
+    <div v-if="userStore.error" class="text-negative q-mb-md">
+      {{ userStore.error }}
+    </div>
 
-
-<!--   <div class="q-mb-md">-->
-<!--     <q-btn-->
-<!--      label="Load Users"-->
-<!--      color="primary"-->
-<!--      @click="() => void userStore.fetchUsers()"-->
-<!--      :loading="userStore.loading"-->
-<!--     />-->
-<!--   </div>-->
-  <!-- 에러가 있으면 빨간 텍스트로    -->
-  <div v-if="userStore.error" class="text-negative q-mb-md">
-    {{userStore.error}}
-  </div>
-
-    <!-- users 가 빈 배열이면 no-data-label, 데이터가 들어오면 바로 렌더링됩니다 -->
     <q-table
       :columns="columns"
       :rows="userStore.users"
       row-key="id"
+      selection="multiple"
+      v-model:selected="selected"
       flat
       bordered
       no-data-label="데이터가 없습니다."
+      :loading="userStore.loading"
+    >
+      <template v-slot:body-cell-actions="props">
+        <q-td :props="props" class="q-gutter-sm">
+          <q-btn
+            dense
+            round
+            flat
+            icon="visibility"
+            :to="`/users/${props.row.id}`"
+            aria-label="View Details"
+          />
+          <q-btn
+            dense
+            round
+            flat
+            color="primary"
+            icon="edit"
+            @click="openEditDialog(props.row)"
+            aria-label="Edit User"
+          />
+          <q-btn
+            dense
+            round
+            flat
+            color="negative"
+            icon="delete"
+            @click="confirmDelete(props.row)"
+            aria-label="Delete User"
+          />
+        </q-td>
+      </template>
+    </q-table>
+
+    <UserFormDialog
+      v-model="dialog.show"
+      :edit-user="dialog.userToEdit"
+      @submit="handleSubmit"
+      @close="closeDialog"
     />
-    <q-dialog v-model="dialog">
-      <q-card style="min-width: 350px" >
-        <q-card-section>
-          <div class="text-h6">사용자 추가 </div>
-        </q-card-section>
-
-        <q-card-section>
-          <q-input v-model="form.name" label="이름"/>
-          <q-input  v-model="form.email" label="이메일" class="q-mt-sm"/>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="취소" color="primary" v-close-popup/>
-          <q-btn flat label="추가" color="primary" @click="handleCreateUser"/>
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import {useUserStore, type User} from 'stores/user';
-import type { QTableColumn } from 'quasar'
-// import type { GetUsersRes, CreateUserReq } from 'src/api/user.type'
-// 1) User 타입
-// type User = GetUsersRes[number]
-//1) store 인스턴스 생성할 때
-const userStore = useUserStore()
-const dialog =  ref(false);
-const form = ref({name: '', email: ''});
-//userStore -> pinia 사용 x 일 때 코드
-// 2) 반응형 users 배열 (초기값은 빈 배열)
-// const users = ref<User[]>([])
+import { useUserStore, type User } from 'stores/user';
+import type { QTableColumn } from 'quasar';
+import { useQuasar } from 'quasar';
+// 방금 생성한 다이얼로그 컴포넌트를 임포트합니다.
+import UserFormDialog from 'components/UserFormDialog.vue';
 
-// 2) 컬럼 정의
-const columns: QTableColumn<User>[] = [
-  { name: 'id',    label: 'ID',    field: 'id',    align: 'left', required: true },
-  { name: 'name',  label: 'Name',  field: 'name',  align: 'left', required: true },
-  { name: 'email', label: 'Email', field: 'email', align: 'left', required: true }
-]
+const userStore = useUserStore();
+const $q = useQuasar(); // Quasar의 다이얼로그와 알림 기능을 사용하기 위함
+// ✨ [추가] 선택된 사용자 목록을 담을 ref
+const selected = ref<User[]>([]);
 
-async function handleCreateUser() {
-  if (!form.value.name ||!form.value.email) return;
 
-  await userStore.createUser({
-    name: form.value.name,
-    email: form.value.email,
-  });
+// 다이얼로그 상태를 관리하는 객체
+const dialog = ref<{
+  show: boolean;
+  userToEdit: User | null;
+}>({
+  show: false,
+  userToEdit: null,
+});
 
-  dialog.value = false;
-  form.value = {name: '', email: ''};
+// ✨ 'Actions' 컬럼을 테이블 정의에 추가
+// 'Actions' 컬럼을 테이블 정의에 추가합니다.
+const columns: QTableColumn[] = [
+  { name: 'id',    label: 'ID',    field: 'id',    align: 'left' },
+  { name: 'name',  label: 'Name',  field: 'name',  align: 'left' },
+  { name: 'email', label: 'Email', field: 'email', align: 'left' },
+  // ✨ 이 줄을 추가해야 합니다.
+  { name: 'actions', label: 'Actions', field: '', align: 'center' },
+];
+
+// 사용자 추가 다이얼로그 열기
+function openCreateDialog() {
+  dialog.value.userToEdit = null; // 수정 모드가 아님을 명시
+  dialog.value.show = true;
 }
 
-//3) onMounted 시 한 번 로드
-onMounted(async () => {
-   await userStore.fetchUsers()
-})
+// 사용자 수정 다이얼로그 열기
+function openEditDialog(user: User) {
+  dialog.value.userToEdit = user; // 수정할 사용자 정보 전달
+  dialog.value.show = true;
+}
 
+// 다이얼로그 닫기
+function closeDialog() {
+  dialog.value.show = false;
+  dialog.value.userToEdit = null;
+}
 
-// pinia -> UserStore를 사용 안 했을 때의 코드
-/*// 4) loadUsers: GET /api/users → rows 에 바로 User[] 할당
-async function loadUsers() {
-  try {
-    // GetUsersRes 를 User[] 로 정의했으니 res.data 에 바로 배열이 옵니다
-    const res = await httpClient.get<GetUsersRes>('/api/users', {
-      params: { page: 1, limit: 10 }
-    })
-    users.value = res.data
-
-    // POST 테스트(선택)
-    const newUser: CreateUserReq = {
-      name: '테스트',
-      email: 'foo@bar.com'
-    }
-    const created = await httpClient.post<
-      CreateUserReq & { id: string; createdAt: string },
-      CreateUserReq
-    >('/api/users', newUser)
-    console.log('Created:', created.data)
-
-  } catch (err) {
-    console.error('API 요청 중 오류 발생:', err)
+// 폼 제출 처리 (생성 또는 수정)
+async function handleSubmit(formData: { name: string; email: string }) {
+  if (dialog.value.userToEdit) {
+    // 수정 모드일 경우
+    await userStore.updateUser(dialog.value.userToEdit.id, formData);
+  } else {
+    // 생성 모드일 경우
+    await userStore.createUser(formData);
   }
-}*/
+  closeDialog(); // 작업 완료 후 다이얼로그 닫기
+}
+
+// 사용자 삭제 확인
+function confirmDelete(user: User) {
+  $q.dialog({
+    title: '삭제 확인',
+    message: `'${user.name}' 사용자를 정말 삭제하시겠습니까?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    // async 함수를 즉시 실행하고 void 연산자로 Promise 반환을 무시
+    void (async () => {
+      await userStore.deleteUser(user.id);
+      $q.notify({
+        color: 'positive',
+        message: '사용자가 삭제되었습니다.',
+        icon: 'check',
+      });
+    })();
+  });
+}
+// 선택된 사용자들을 일괄 삭제
+function confirmBulkDelete(){
+  $q.dialog({
+    title: '일괄 삭제 확인',
+    message: `${selected.value.length}명의 사용자를 정말 삭제하시겠습니까?`,
+    cancel: true,
+    persistent: true,
+  }).onOk(()=>{
+    void (async () => {
+      //선택된 모든 사용자에 대해 삭제 요청을 동시에 보냄
+      const deletePromises = selected.value.map(user => userStore.deleteUser(user.id));
+      await  Promise.all(deletePromises);
+
+      $q.notify({
+        color: 'positive',
+        message: `${selected.value.length}명의 사용자가 삭제되었습니다.`
+      });
+      // 삭제 후 선택 목록을 비움
+      selected.value = [];
+    })(); // ()를 추가하는 이유는 "이 레시피대로 당장 요리를 시작하라는 명령"이기 때문이다.
+  })
+}
+// 컴포넌트가 마운트될 때 사용자 목록을 불러옵니다.
+  onMounted(async () => {
+    await userStore.fetchUsers();
+  });
+
 </script>

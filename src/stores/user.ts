@@ -6,6 +6,8 @@ import { httpClient } from 'src/api';
 // User 타입은 GetUsersRes 배열의 요소 하나를 의미함
 export type User = GetUsersRes[number];
 
+//업데이트 시 id를 제외한 필드는 선택적으로 받을 수 있도록 Partial 유틸리티 타입 사용
+export type UpdateUserReqPayload = Partial<Omit<User, 'id'>>;
 /**
  *  사용자 정보를 관리하는 Pinia 스토어 정의
  * @type {StoreDefinition<'user', {users: User[], loading: boolean, error: string}, {userNames: (state) => any}, {fetchUsers(page?: number, limit?: number): Promise<void>, createUser(payload: CreateUserReq): Promise<void>}>}
@@ -54,7 +56,7 @@ export const useUserStore = defineStore('user', {
       try {
         // 사용자 생성 요청 (POST 요청)
         await httpClient.post<{ id: string; createdAt: string }, CreateUserReq>(
-          '/users',  // API 엔드포인트
+          '/users', // API 엔드포인트
           payload, // 보낼 데이터: name, email 등
         );
         // 성공적으로 생성되면 사용자 목록을 다시 불러오기
@@ -67,6 +69,39 @@ export const useUserStore = defineStore('user', {
           this.error = String(err);
         }
       } finally {
+        this.loading = false;
+      }
+    },
+
+    // 사용자 삭제
+    async deleteUser(id: string){
+      this.loading = true;
+      this.error = '';
+      try {
+        // id 파라미터를 받음
+        await httpClient.delete(`/users/${id}`);
+        //로컬 상태에서 해당 유저 즉시 제거
+        this.users = this.users.filter(user => user.id !== id);
+        await this.fetchUsers();
+      } catch (err: unknown) {
+        if (err instanceof Error) this.error = err.message;
+        else this.error = String(err);
+      }finally {
+        this.loading = false;
+      }
+    },
+    // 사용자 정보 수정
+    async updateUser(id :string, payload:  UpdateUserReqPayload) {
+      this.loading = true;
+      this.error = '';
+      try {
+        // PATCH 요청으로 부분 업데이트 수행
+        await  httpClient.patch(`/users/${id}`, payload);
+        await this.fetchUsers(); // 성공 후 목록 새로고침
+      } catch (err: unknown) {
+        if (err instanceof Error) this.error = err.message;
+        else this.error = String(err);
+      }finally {
         this.loading = false;
       }
     },

@@ -45,7 +45,7 @@ export class Http {
    * @param config 요청 설정 (headers, params, data)
    */
   private async request<T = unknown, D = unknown>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
     url: string,
     config: RequestConfig<D> = {}
   ): Promise<HttpResponse<T>> {
@@ -140,6 +140,21 @@ export class Http {
     config: RequestConfig = {}
   ): Promise<HttpResponse<T>> {
     return this.request<T>('DELETE', url, config)
+  }
+
+  /**
+   * ✨ PATCH 요청 (완성된 부분)
+   * @param url API 경로
+   * @param data 전송할 데이터 (부분 업데이트)
+   * @param config 추가 요청 설정
+   */
+  public patch<T = unknown, D = unknown>(
+    url: string,
+    data: D,
+    config: RequestConfig<D> = {}
+  ): Promise<HttpResponse<T>> {
+    // 내부 request 메서드를 'PATCH' 타입으로 호출합니다.
+    return this.request<T, D>('PATCH', url, { ...config, data });
   }
 }
 
